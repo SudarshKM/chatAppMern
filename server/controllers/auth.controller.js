@@ -1,6 +1,6 @@
 import bycrypt from "bcryptjs";
 
-import User from "../routes/models/user.model.js";
+import User from "../models/user.model.js";
 import generateTokenAndSetCookie from "../utils/generateToken.js";
 
 export const signUP = async (req, res) => {
@@ -34,23 +34,61 @@ export const signUP = async (req, res) => {
     });
 
     if (newUser) {
+      //generating JWT token
 
-        //generating JWT token
-
-        generateTokenAndSetCookie(newUser._id , res)
+      generateTokenAndSetCookie(newUser._id, res);
 
       await newUser.save();
 
       res.status(200).json(newUser);
     }
   } catch (error) {
+    console.log("Error in signUpController", error.message);
+
     res.status(401).json(error);
   }
 };
 
-export const loginUser = (req, res) => {
-  res.send("login");
+
+export const loginUser = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    const isPasswordCorrect = bycrypt.compareSync(
+      password,
+      user?.password || ""
+    );
+
+    if (!user || !isPasswordCorrect) {
+      return res.status(400).json({ error: "Invalid username or password" });
+    }
+    generateTokenAndSetCookie(user._id, res)
+
+
+    res.status(200).json({
+        _id: user._id,
+        fullName: user.fullName,
+        username: user.username,
+        profilePic: user.profilePic  
+    })
+    
+  } catch (error) {
+    console.log("Error in logInController", error.message);
+
+    res.status(401).json(error);
+  }
 };
+
+
 export const logOut = (req, res) => {
-  res.send("logOut");
+  try {
+
+    res.cookie("jwt", "", {maxAge: 0});
+    res.status(200).json({message: "Logged out successfully"})
+     
+  } catch (error) {
+    console.log("Error in logOutController", error.message);
+
+    res.status(401).json(error); 
+  }
 };
